@@ -2,6 +2,9 @@
 
 Lab cho học phần **AICB-P2T3 · Ngày 22 · DPO/ORPO Alignment — từ SFT đến học theo sở thích**.
 
+Hướng dẫn chạy bản đã chuẩn bị trên Colab T4, tải ZIP bằng chứng và hoàn thiện bài nộp:
+[`submission/COLAB_GUIDE.md`](submission/COLAB_GUIDE.md).
+
 > Bản K4 cập nhật tháng 10/2026 (xem [`CHANGELOG.md`](CHANGELOG.md)). Mọi thời gian trong tài liệu này là
 > ước tính trên Colab T4 miễn phí; máy của bạn có thể nhanh hoặc chậm hơn.
 

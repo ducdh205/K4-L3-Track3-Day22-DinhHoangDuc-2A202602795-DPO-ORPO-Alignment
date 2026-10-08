@@ -23,6 +23,7 @@
 
 # %%
 import sys
+import time
 from pathlib import Path
 
 ROOT = next(p for p in (Path.cwd(), *Path.cwd().parents) if (p / "lab22" / "config.py").exists())
@@ -76,7 +77,11 @@ trainer = DPOTrainer(
     eval_dataset=eval_ds,
     processing_class=tokenizer,
 )
+torch.cuda.reset_peak_memory_stats()
+started = time.perf_counter()
 result = trainer.train()
+train_seconds = time.perf_counter() - started
+peak_vram_gb = torch.cuda.max_memory_allocated() / 1e9
 final_eval = trainer.evaluate()
 print(f"train loss {result.training_loss:.4f} · held-out reward accuracy "
       f"{final_eval.get('eval_rewards/accuracies', float('nan')):.3f}")
@@ -108,6 +113,7 @@ print(f"[{label}] {message}")
 
 # %%
 import json
+import hashlib
 
 trainer.model.save_pretrained(str(C.DPO_ADAPTER))
 tokenizer.save_pretrained(str(C.DPO_ADAPTER))
@@ -122,6 +128,15 @@ metrics = {
     "compute_tier": C.COMPUTE_TIER,
     "base_model": C.BASE_MODEL,
     "reference": "models/sft-merged (precomputed)",
+    "reference_model": str(C.SFT_MERGED.resolve()),
+    "reference_config_sha256": hashlib.sha256((C.SFT_MERGED / "config.json").read_bytes()).hexdigest(),
+    "gpu_name": torch.cuda.get_device_name(0),
+    "train_runtime_seconds": train_seconds,
+    "peak_vram_gb": peak_vram_gb,
+    "max_len": C.MAX_LEN,
+    "seed": C.SEED,
+    "train_pairs": len(train_ds),
+    "heldout_pairs": len(eval_ds),
     "pref_dataset": C.PREF_DATASET,
     "beta": C.DPO_BETA,
     "lr": C.DPO_LR,
@@ -137,6 +152,8 @@ metrics = {
     "eval_reward_gap": final_eval.get("eval_rewards/margins"),
     "eval_reward_accuracy": final_eval.get("eval_rewards/accuracies"),
     "diagnosis": label,
+    "train_reward_history": train_hist.to_dict(orient="records"),
+    "eval_reward_history": eval_hist.to_dict(orient="records"),
 }
 (C.DPO_ADAPTER / "dpo_metrics.json").write_text(json.dumps(metrics, indent=2))
 print(json.dumps(metrics, indent=2))

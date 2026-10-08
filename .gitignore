@@ -14,18 +14,23 @@ __pycache__/
 
 # Lab artifacts: weights stay local. The small evidence files below ARE committed,
 # because the auto-grader reads only what is in the repo.
-models/
+models/*
+!models/sft-merged/
+models/sft-merged/*
+!models/sft-merged/config.json
 adapters/*
 !adapters/.gitkeep
 !adapters/*/
 adapters/*/*
 !adapters/*/adapter_config.json
 !adapters/*/dpo_metrics.json
+!adapters/*/sft_metrics.json
 !adapters/*/split.json
 !adapters/*/variants_summary.json
 !adapters/*/grpo_metrics.json
 data/pref/*
 !data/pref/*.parquet
+!data/pref/stats.json
 data/eval/*
 !data/eval/*.json
 !data/eval/*.jsonl
@@ -33,6 +38,7 @@ data/eval/lm_eval/
 gguf*/
 *.gguf
 runs/
+lab22-submission.zip
 wandb/
 
 # HuggingFace cache

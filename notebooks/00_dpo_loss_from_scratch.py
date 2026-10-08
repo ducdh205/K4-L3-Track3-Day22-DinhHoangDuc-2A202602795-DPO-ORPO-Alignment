@@ -59,8 +59,8 @@ print(f"sum log p = {total.item():.3f}   mean log p = {mean.item():.3f}")
 # %%
 def my_dpo_loss(pc, pr, rc, rr, beta=0.1):
     """pc/pr: policy log-prob chosen/rejected; rc/rr: reference. Trả về loss trung bình."""
-    # TODO: viết bằng torch.nn.functional.logsigmoid
-    return None
+    margin = beta * ((pc - rc) - (pr - rr))
+    return -torch.nn.functional.logsigmoid(margin).mean()
 
 
 # %%
@@ -68,11 +68,8 @@ pc, pr = torch.tensor([-12.0, -30.0]), torch.tensor([-15.0, -28.0])
 rc, rr = torch.tensor([-13.0, -29.0]), torch.tensor([-14.0, -29.0])
 ref_loss, _, _ = M.dpo_loss(pc, pr, rc, rr, beta=0.1)
 mine = my_dpo_loss(pc, pr, rc, rr, beta=0.1)
-if mine is None:
-    print(f"Chưa cài my_dpo_loss. Đáp số tham chiếu: {ref_loss.item():.4f}")
-else:
-    assert torch.allclose(torch.as_tensor(mine), ref_loss, atol=1e-6), (mine, ref_loss)
-    print(f"✓ Khớp tham chiếu: {ref_loss.item():.4f}")
+assert torch.allclose(mine, ref_loss, atol=1e-6), (mine, ref_loss)
+print(f"✓ Khớp tham chiếu: {ref_loss.item():.4f}")
 
 # %% [markdown]
 # ## 3. Bước 0: mô hình đang học (policy) = reference ⇒ loss = log 2
@@ -84,6 +81,8 @@ else:
 # %%
 same = torch.tensor([-20.0, -35.0])
 loss0, cr0, rr0 = M.dpo_loss(same, same - 3, same, same - 3)
+assert torch.allclose(my_dpo_loss(same, same - 3, same, same - 3), torch.tensor(math.log(2)), atol=1e-6)
+assert torch.all(cr0 == 0) and torch.all(rr0 == 0)
 print(f"loss at init = {loss0.item():.4f}   log 2 = {math.log(2):.4f}   rewards = {cr0.tolist()}, {rr0.tolist()}")
 
 # %% [markdown]
@@ -112,6 +111,16 @@ scenarios = {
 for name, (pc_, pr_) in scenarios.items():
     loss, cr, rj = M.dpo_loss(pc_, pr_, ref_c, ref_r, beta=1.0)
     print(f"{name:28s} loss {loss.item():.3f}  reward chosen {cr.item():+.1f}  rejected {rj.item():+.1f}")
+
+# %% [markdown]
+# **Trả lời câu hỏi NB0:** DPO tối ưu chênh lệch log-ratio giữa chosen và rejected,
+# nên margin tăng không bảo đảm xác suất tuyệt đối của chosen tăng. Trong kịch bản B,
+# log-prob chosen giảm 3 nat (xác suất còn khoảng 5% mức ban đầu), nhưng rejected
+# giảm 5 nat (còn khoảng 0,67%). Với β=1, reward chosen là −3, rejected là −5,
+# margin vẫn bằng 2 và loss giảm từ log 2 xuống khoảng 0,127. Vì rejected giảm
+# nhanh hơn, mô hình ưu tiên chosen tương đối tốt hơn dù cả hai câu ít có khả năng
+# được sinh ra hơn. Đây là likelihood displacement; cần đọc riêng hai đường
+# reward và đánh giá câu trả lời trên held-out trước khi kết luận mô hình tốt hơn.
 
 # %% [markdown]
 # **RPO** thêm NLL của câu chosen vào loss: kịch bản B bị phạt vì chosen bị đẩy xuống.

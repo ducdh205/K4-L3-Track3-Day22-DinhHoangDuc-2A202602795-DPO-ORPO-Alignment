@@ -1,0 +1,19 @@
+Lab22 artifact verification
+Executed: 2026-10-08T21:10:46+07:00
+Command: python -X utf8 scripts/verify.py
+Working directory: E:\AIVin\K4-L3-Track3-Day22-DinhHoangDuc-2A202602795-DPO-ORPO-Alignment
+
+==> Verifying submission at E:\AIVin\K4-L3-Track3-Day22-DinhHoangDuc-2A202602795-DPO-ORPO-Alignment
+
+Optional (bonus):
+  · NB3b variants
+  · NB5 GGUF
+  · NB6 benchmark
+  · NB7 GRPO
+  · β-sweep
+
+✓ Core checks passed. Push your repo and paste the URL into the LMS.
+
+Exit code: 0
+
+Scope: artifact checks only; does not certify executed notebook outputs or a clean GPU pipeline rerun.

@@ -58,10 +58,22 @@ def check_dpo(problems: list[str], warnings: list[str]) -> None:
         return
     base = str((read_json(adapter / "adapter_config.json", problems) or {}).get("base_model_name_or_path", ""))
     expected = (REPO / "models" / "sft-merged").resolve()
-    if not base or Path(base).resolve() != expected:
+    path = adapter / "dpo_metrics.json"
+    metrics = (read_json(path, problems) or {}) if path.exists() else {}
+    # Colab records /content/lab22/...; downloaded evidence keeps that provenance.
+    # Accept a moved repo only when the recorded reference and its config hash agree.
+    config = expected / "config.json"
+    recorded = metrics.get("reference_model", "")
+    portable_reference = (
+        bool(recorded) and base == recorded
+        and recorded.replace("\\", "/").endswith("/models/sft-merged")
+        and config.is_file()
+        and metrics.get("reference_config_sha256") == hashlib.sha256(config.read_bytes()).hexdigest()
+    )
+    if not base or (Path(base).resolve() != expected and not portable_reference):
         problems.append(
             f"WRONG REF  adapters/dpo was trained on {base!r}, not {rel(expected)}: the DPO reference "
-            "must be this repo's SFT model (if the repo moved, rerun NB3 here)."
+            "must be this repo's SFT model; moved Colab evidence needs the matching reference config and hash."
         )
     sys.path.insert(0, str(REPO))
     from lab22.data import split_mismatch
@@ -70,10 +82,8 @@ def check_dpo(problems: list[str], warnings: list[str]) -> None:
         mismatch = split_mismatch(REPO / "data" / "pref", adapter)
         if mismatch:
             problems.append(f"SPLIT    {mismatch}")
-    path = adapter / "dpo_metrics.json"
     if not need(path, "DPO metrics (NB3)", problems):
         return
-    metrics = read_json(path, problems) or {}
     for key in ("end_reward_gap", "eval_reward_accuracy", "diagnosis"):
         if metrics.get(key) is None:
             warnings.append(f"dpo_metrics.json has no {key}")

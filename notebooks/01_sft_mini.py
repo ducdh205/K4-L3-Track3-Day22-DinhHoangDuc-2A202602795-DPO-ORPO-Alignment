@@ -19,6 +19,7 @@
 
 # %%
 import sys
+import time
 from pathlib import Path
 
 ROOT = next(p for p in (Path.cwd(), *Path.cwd().parents) if (p / "lab22" / "config.py").exists())
@@ -103,7 +104,11 @@ trainer = train_on_responses_only(
     instruction_part="<|im_start|>user\n",
     response_part="<|im_start|>assistant\n",
 )
+torch.cuda.reset_peak_memory_stats()
+started = time.perf_counter()
 result = trainer.train()
+train_seconds = time.perf_counter() - started
+peak_vram_gb = torch.cuda.max_memory_allocated() / 1e9
 print(f"Final SFT loss: {result.training_loss:.4f}")
 
 # %%
@@ -128,6 +133,23 @@ plt.show()
 model.save_pretrained(str(C.SFT_ADAPTER))
 tokenizer.save_pretrained(str(C.SFT_ADAPTER))
 model.save_pretrained_merged(str(C.SFT_MERGED), tokenizer, save_method="merged_16bit")
+import json
+
+sft_metrics = {
+    "base_model": C.BASE_MODEL,
+    "dataset": C.SFT_DATASET,
+    "train_samples": len(ds),
+    "epochs": 1,
+    "seed": C.SEED,
+    "max_len": C.MAX_LEN,
+    "gpu_name": torch.cuda.get_device_name(0),
+    "gpu_vram_gb": torch.cuda.get_device_properties(0).total_memory / 1e9,
+    "train_runtime_seconds": train_seconds,
+    "peak_vram_gb": peak_vram_gb,
+    "final_train_loss": float(result.training_loss),
+    "loss_history": logs.to_dict(orient="records"),
+}
+(C.SFT_ADAPTER / "sft_metrics.json").write_text(json.dumps(sft_metrics, indent=2), encoding="utf-8")
 print(f"Saved adapter → {C.SFT_ADAPTER}\nSaved merged 16-bit → {C.SFT_MERGED}")
 
 # %%
